@@ -1,9 +1,8 @@
 import json
 
-from sqlalchemy import Column, UUID, String, ForeignKey, Index, func
-
-
-from pydantic import UUID4, BaseModel
+from sqlalchemy import Column, UUID, String, ForeignKey, Index, func, select
+from sqlalchemy.orm import aliased, column_property
+from sqlalchemy.dialects.postgresql import array
 
 
 from app.db.core import Base
@@ -35,19 +34,44 @@ class Item(Base):
         ),
     )
 
-    def __repr__(self):
-        return repr_func(
-            {
-                "id": self.item_id,
-                "name": self.name,
-                "parent_id": self.parent_id,
-            }
-        )
+
+i = aliased(Item)
+cte = (
+    select(i, array([i.name]).label("path"))
+    .where(i.parent_id.is_(None))
+    .cte(recursive=True)
+)
+
+cte = cte.union_all(
+    select(Item, func.array_append(cte.c.path, Item.name).label("path")).join(
+        cte, cte.c.item_id == Item.parent_id
+    )
+)
 
 
-class ItemWithPath(BaseModel):
-    item_id: UUID4
-    name: str
-    type: str
-    parent_id: UUID4 | None
-    path: list[str]
+class ItemExtended(Base):
+    __table__ = cte
+
+    item_id = __table__.c.item_id
+    name = __table__.c.name
+    type = __table__.c.type
+    parent_id = __table__.c.parent_id
+    path = column_property(__table__.c.path)
+
+
+"""
+    WITH RECURSIVE items_cte(item_id, name, type, parent_id, path) AS (
+        SELECT i.item_id, i."name", i.type, i.parent_id, array[i."name"] AS path
+        FROM item i
+        WHERE i.parent_id IS NULL
+        UNION ALL
+        SELECT c.item_id, c."name", c.type, c.parent_id, array_append(p.path, c.name)
+        FROM items_cte p
+        JOIN item c ON c.parent_id = p.item_id
+    )
+    SELECT * FROM items_cte WHERE items_cte.parent_id = :parent_id
+    ORDER BY array_position(ARRAY[:order_by]::varchar[], type)
+    LIMIT :limit
+    OFFSET :offset
+;
+"""

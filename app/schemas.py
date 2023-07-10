@@ -18,7 +18,6 @@ class FileStorageItemSchema(BaseModel):
     id_: UUID4 = Field(..., alias="id")
     type_: ItemTypeHR = Field(..., alias="type")
     src: str  # strange path to item
-    bind_count: int = 0  # bindings count
     path: str  # normal path to item
 
     @validator("type_", pre=True)

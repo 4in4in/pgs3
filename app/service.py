@@ -10,6 +10,14 @@ from app.schemas import FileStorageItemSchema
 LimitOffset = namedtuple("LimitOffset", ("limit", "offset"))
 
 
+class FileExists(Exception):
+    ...
+
+
+class FolderExists(Exception):
+    ...
+
+
 class FileStorageService:
     def __init__(
         self,
@@ -41,28 +49,39 @@ class FileStorageService:
             await self.s3_helper.upload_file(key=str(file_id), raw_content=raw_content)
             await self.storage_repo.commit()
         except IntegrityError as ex:
-            # folder or file exists
-            raise ex
+            raise FileExists
         except Exception as ex:
             await self.storage_repo.rollback()
             raise ex
 
     async def list_folder_items(
-        self, folder_id: ItemId | None = None, page: int = 1, per_page: int = 50
+        self,
+        folder_id: ItemId | None = None,
+        query: str | None = None,
+        page: int = 1,
+        per_page: int = 50,
     ):
         limit, offset = self._page_to_limit_offset(page, per_page)
-        result = await self.storage_repo.list_items(folder_id, limit, offset)
+        result = await self.storage_repo.list_items(folder_id, query, limit, offset)
         return [
             FileStorageItemSchema(
                 title=item.name,
                 id=item.item_id,
                 type=item.type,
                 src=self.delimiter.join(item.path),
-                bind_count=0,
                 path=self.delimiter.join(item.path),
             )
             for item in result
         ]
+
+    async def create_folder(self, name: str, parent_id: ItemId | None = None):
+        folder_id = self.unique_id_factory()
+        try:
+            self.storage_repo.create_item(folder_id, name, ItemType.FOLDER, parent_id)
+            await self.storage_repo.commit()
+        except IntegrityError as ex:
+            await self.storage_repo.rollback()
+            raise FolderExists
 
     async def remove_file(self, file_id: ItemId) -> None:
         try:
