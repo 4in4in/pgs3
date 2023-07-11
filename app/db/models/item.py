@@ -24,6 +24,7 @@ class Item(Base):
         ForeignKey("item.item_id", ondelete="CASCADE", onupdate="CASCADE"),
     )
     type = Column(String(1), nullable=False)
+    path = Column(String)
 
     __table_args__ = (
         Index("uix_item_id_name", item_id, name, unique=True),
