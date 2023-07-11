@@ -39,13 +39,15 @@ async def repo():
 
 async def test_list_items(repo: StorageRepository):
     print(repo)
-    assert await repo.list_items() == []
+    assert await repo.list_items() == ([], 0)
 
 
 async def test_root_folder_creating(repo: StorageRepository):
     repo.create_item(uuid4(), "test folder", ItemType.FOLDER)
     await repo.commit()
-    assert len(await repo.list_items()) == 1
+    items, total = await repo.list_items()
+    assert len(items) == 1
+    assert total == 1
 
 
 async def test_nested_folder_creating(repo: StorageRepository):
@@ -59,17 +61,17 @@ async def test_nested_folder_creating(repo: StorageRepository):
         )
     await repo.commit()
 
-    assert len(await repo.list_items()) == 1
-    assert len(await repo.list_items(root_folder_id)) == inner_folders_count
-    assert len(await repo.list_items(search_query="inner")) == inner_folders_count
-    assert len(await repo.list_items(search_query="inner0")) == 1
+    assert len((await repo.list_items())[0]) == 1
+    assert len((await repo.list_items(root_folder_id))[0]) == inner_folders_count
+    assert len((await repo.list_items(search_query="inner"))[0]) == inner_folders_count
+    assert len((await repo.list_items(search_query="inner0"))[0]) == 1
 
 
 async def test_ordering(repo: StorageRepository):
     repo.create_item(uuid4(), "folder", ItemType.FOLDER)
     repo.create_item(uuid4(), "file", ItemType.FILE)
     await repo.commit()
-    list = [item.type for item in await repo.list_items()]
+    list = [item.type for item in (await repo.list_items())[0]]
     assert list == [ItemType.FOLDER.value, ItemType.FILE.value]
 
 

@@ -4,8 +4,8 @@ from collections import namedtuple
 from sqlalchemy.exc import IntegrityError
 
 from app.db.repo import ItemType, ItemId, StorageRepository
-from app.s3_connector.connector import S3Helper
-from app.schemas import FileStorageItemSchema
+from app.s3_connector.connector import S3Connector
+from app.schemas import FileStorageItemSchema, Page, PathResponseItem
 
 LimitOffset = namedtuple("LimitOffset", ("limit", "offset"))
 
@@ -21,8 +21,8 @@ class FolderExists(Exception):
 class FileStorageService:
     def __init__(
         self,
-        s3_helper: S3Helper,
         storage_repo: StorageRepository,
+        s3_helper: S3Connector | None = None,
         unique_id_factory=uuid4,
         delimiter: str = "/",
     ) -> None:
@@ -46,7 +46,10 @@ class FileStorageService:
             await self.storage_repo.create_item(
                 file_id, filename, ItemType.FILE, parent_id=folder_id
             )
-            await self.s3_helper.upload_file(key=str(file_id), raw_content=raw_content)
+            if self.s3_helper:
+                await self.s3_helper.upload_file(
+                    key=str(file_id), raw_content=raw_content
+                )
             await self.storage_repo.commit()
         except IntegrityError as ex:
             raise FileExists
@@ -62,8 +65,10 @@ class FileStorageService:
         per_page: int = 50,
     ):
         limit, offset = self._page_to_limit_offset(page, per_page)
-        result = await self.storage_repo.list_items(folder_id, query, limit, offset)
-        return [
+        raw_items, total = await self.storage_repo.list_items(
+            folder_id, query, limit, offset
+        )
+        items = [
             FileStorageItemSchema(
                 title=item.name,
                 id=item.item_id,
@@ -71,13 +76,26 @@ class FileStorageService:
                 src=self.delimiter.join(item.path),
                 path=self.delimiter.join(item.path),
             )
-            for item in result
+            for item in raw_items
         ]
+        path = await self.storage_repo.get_item_by_id(folder_id)
+        if path:
+            path = [PathResponseItem(id=raw_path["item_id"], path=raw_path["name"]) for raw_path in path.path]
+        else:
+            path = [PathResponseItem(id=None, path=self.delimiter)]
+        return Page(
+            current_page=page,
+            items=items,
+            path=path,
+            all_page=int(total / per_page) + 1,
+        )
 
     async def create_folder(self, name: str, parent_id: ItemId | None = None):
         folder_id = self.unique_id_factory()
         try:
-            self.storage_repo.create_item(folder_id, name, ItemType.FOLDER, parent_id)
+            self.storage_repo.create_item(
+                folder_id, name, ItemType.FOLDER, parent_id=parent_id
+            )
             await self.storage_repo.commit()
         except IntegrityError as ex:
             await self.storage_repo.rollback()
@@ -86,7 +104,8 @@ class FileStorageService:
     async def remove_file(self, file_id: ItemId) -> None:
         try:
             await self.storage_repo.remove_item(file_id)
-            await self.s3_helper.remove_items([file_id])
+            if self.s3_helper:
+                await self.s3_helper.remove_items([file_id])
         except Exception as ex:
             raise ex
 

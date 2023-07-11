@@ -5,7 +5,8 @@ from sqlalchemy import select, delete, func
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Item, ItemExtended
+from app.db.models.item import Item
+from app.db.models.item_extended import ItemWithFullPath, ItemWithPath
 
 
 ItemId = UUID | str
@@ -26,17 +27,23 @@ class StorageRepository:
         search_query: str | None = None,
         limit: int = 10,
         offset: int = 0,
-    ) -> list[ItemExtended]:
+    ) -> tuple[list[ItemWithPath], int]:
         order_func = func.array_position(
             array([ItemType.FOLDER.value, ItemType.FILE.value]),
-            ItemExtended.type,
+            ItemWithPath.type,
         )
-        query = select(ItemExtended).order_by(order_func).limit(limit).offset(offset)
+        query = select(ItemWithPath).order_by(order_func).limit(limit).offset(offset)
+        count_query = select(func.count(ItemWithPath.item_id))
         if parent_id or not search_query:
-            query = query.where(ItemExtended.parent_id == parent_id)
+            query = query.where(ItemWithPath.parent_id == parent_id)
         if search_query:
-            query = query.where(ItemExtended.name.like(f"%{search_query}%"))
-        return (await self.session.execute(query)).scalars().all()
+            query = query.where(ItemWithPath.name.like(f"%{search_query}%"))
+        items = (await self.session.execute(query)).scalars().all()
+        total = (await self.session.execute(count_query)).scalar()
+        return items, total
+
+    async def get_item_by_id(self, item_id: ItemId) -> ItemWithFullPath | None:
+        return await self.session.get(ItemWithFullPath, item_id)
 
     def create_item(
         self,
@@ -59,7 +66,7 @@ class StorageRepository:
         await self.session.execute(query)
 
     async def get_item_id_by_path(self, path: list[str]) -> ItemId:
-        query = select(ItemExtended.item_id).where(ItemExtended.path == array(path))
+        query = select(ItemWithPath.item_id).where(ItemWithPath.path == array(path))
         return (await self.session.execute(query)).scalar_one_or_none()
 
     async def _remove_all(self) -> None:

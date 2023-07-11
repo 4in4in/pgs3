@@ -3,7 +3,7 @@ from io import BytesIO
 import aioboto3
 
 
-class S3Helper:
+class S3Connector:
     def __init__(
         self,
         bucket_name: str,
@@ -49,4 +49,4 @@ class S3Helper:
 
         for keys_chunk in divide_chunks(keys, batch_count):
             delete_arg = {"Objects": [{"Key": key} for key in keys_chunk]}
-            await self._client.delete_objects(Bucket=self.bucket, Delete=delete_arg)
+            await self._client.delete_objects(Bucket=self._bucket_name, Delete=delete_arg)

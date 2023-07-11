@@ -23,3 +23,18 @@ class FileStorageItemSchema(BaseModel):
     @validator("type_", pre=True)
     def v(cls, v):
         return type_mapping[v]
+
+
+class CreateFolderSchema(BaseModel):
+    name: str
+    parent_id: UUID4 | None = None
+
+class PathResponseItem(BaseModel):
+    id_: UUID4 | None = Field(None, alias="id")
+    path: str
+
+class Page(BaseModel):
+    current_page: int
+    items: list[FileStorageItemSchema]
+    path: list[PathResponseItem]
+    all_page: int
