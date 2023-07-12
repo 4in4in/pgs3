@@ -1,5 +1,7 @@
 from uuid import uuid4
-from collections import namedtuple
+from collections import defaultdict, namedtuple
+
+from typing import Mapping
 
 from sqlalchemy.exc import IntegrityError
 
@@ -23,13 +25,17 @@ class FileStorageService:
         self,
         storage_repo: StorageRepository,
         s3_helper: S3Connector | None = None,
+        binding_provider: Mapping | None = defaultdict(int),
         unique_id_factory=uuid4,
         delimiter: str = "/",
+        src_prefix: str = "",
     ) -> None:
         self.s3_helper = s3_helper
         self.storage_repo = storage_repo
         self.unique_id_factory = unique_id_factory
+        self.binding_provider = binding_provider
         self.delimiter = delimiter
+        self.src_prefix = src_prefix
 
     def _page_to_limit_offset(self, page: int, per_page: int) -> tuple[int, int]:
         return LimitOffset(limit=per_page, offset=(page - 1) * per_page)
@@ -74,21 +80,28 @@ class FileStorageService:
                 title=item.name,
                 id=item.item_id,
                 type=item.type,
-                src=item.path or item.name,
+                src=self.src_prefix + item.path or item.name,
                 path=item.path or item.name,
+                bind_count=self.binding_provider[item.path],
             )
             for item in raw_items
         ]
         path = [PathResponseItem(id=None, path=self.delimiter)]
         if folder_id:
             path_items = await self.storage_repo.get_item_path(folder_id)
-            path.extend([PathResponseItem(id=path_item.item_id, path=path_item.name) for path_item in path_items])
+            path.extend(
+                [
+                    PathResponseItem(id=path_item.item_id, path=path_item.name)
+                    for path_item in path_items
+                ]
+            )
 
         return Page(
             current_page=page,
             items=items,
             path=path,
             all_page=int(total / per_page) + 1,
+            total=total,
         )
 
     async def create_folder(self, name: str, parent_id: ItemId | None = None):

@@ -37,19 +37,23 @@ class StorageRepository:
             if parent_id or not search_query:
                 _query = _query.where(Item.parent_id == parent_id)
             if search_query:
-                _query = _query.where(Item.name.like(f"%{search_query}%"))
+                _query = _query.where(Item.name.like(f"%{search_query}%")).where(
+                    Item.type == ItemType.FILE.value
+                )
             return (await self.session.execute(_query)).scalar()
 
         order_func = func.array_position(
             array([ItemType.FOLDER.value, ItemType.FILE.value]),
             Item.type,
         )
-        query = select(Item).order_by(order_func).limit(limit).offset(offset)
+        query = select(Item).order_by(order_func).order_by(Item.name).limit(limit).offset(offset)
 
         if parent_id or not search_query:
             query = query.where(Item.parent_id == parent_id)
         if search_query:
-            query = query.where(Item.name.like(f"%{search_query}%"))
+            query = query.where(Item.name.like(f"%{search_query}%")).where(
+                Item.type == ItemType.FILE.value
+            )
         items = (await self.session.execute(query)).scalars().all()
         return items
 

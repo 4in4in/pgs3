@@ -19,6 +19,7 @@ class FileStorageItemSchema(BaseModel):
     type_: ItemTypeHR = Field(..., alias="type")
     src: str  # strange path to item
     path: str  # normal path to item
+    bind_count: int
 
     @validator("type_", pre=True)
     def v(cls, v):
@@ -45,3 +46,4 @@ class Page(BaseModel):
     items: list[FileStorageItemSchema]
     path: list[PathResponseItem]
     all_page: int
+    total: int

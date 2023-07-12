@@ -1,8 +1,8 @@
 
 init-local:
-	export POSTGRES_HOST=localhost
+	POSTGRES_HOST=localhost
 
-run:
+up:
 	docker-compose --env-file .env up -d
 
 test:
@@ -13,3 +13,6 @@ clean:
 
 psql:
 	docker exec -it s3-postgresql psql
+
+run:
+	uvicorn app.main:app
