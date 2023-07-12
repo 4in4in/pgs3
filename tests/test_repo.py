@@ -39,15 +39,15 @@ async def repo():
 
 async def test_list_items(repo: StorageRepository):
     print(repo)
-    assert await repo.list_items() == ([], 0)
+    assert await repo.list_items() == []
 
 
 async def test_root_folder_creating(repo: StorageRepository):
     repo.create_item(uuid4(), "test folder", ItemType.FOLDER)
     await repo.commit()
-    items, total = await repo.list_items()
+    items = await repo.list_items()
     assert len(items) == 1
-    assert total == 1
+
 
 
 async def test_nested_folder_creating(repo: StorageRepository):
@@ -61,17 +61,17 @@ async def test_nested_folder_creating(repo: StorageRepository):
         )
     await repo.commit()
 
-    assert len((await repo.list_items())[0]) == 1
-    assert len((await repo.list_items(root_folder_id))[0]) == inner_folders_count
-    assert len((await repo.list_items(search_query="inner"))[0]) == inner_folders_count
-    assert len((await repo.list_items(search_query="inner0"))[0]) == 1
+    assert len((await repo.list_items())) == 1
+    assert len((await repo.list_items(root_folder_id))) == inner_folders_count
+    assert len((await repo.list_items(search_query="inner"))) == inner_folders_count
+    assert len((await repo.list_items(search_query="inner0"))) == 1
 
 
 async def test_ordering(repo: StorageRepository):
     repo.create_item(uuid4(), "folder", ItemType.FOLDER)
     repo.create_item(uuid4(), "file", ItemType.FILE)
     await repo.commit()
-    list = [item.type for item in (await repo.list_items())[0]]
+    list = [item.type for item in (await repo.list_items())]
     assert list == [ItemType.FOLDER.value, ItemType.FILE.value]
 
 
@@ -98,5 +98,5 @@ async def test_getting_by_path(repo: StorageRepository):
     folder_name = "IF"
     repo.create_item(folder_id, folder_name, ItemType.FOLDER, parent_id=root_folder_id)
     await repo.commit()
-    found_folder_id = await repo.get_item_id_by_path([root_folder_name, folder_name])
+    found_folder_id = await repo.get_item_id_by_path("/".join([root_folder_name, folder_name]))
     assert found_folder_id == folder_id

@@ -10,7 +10,7 @@ from app.db.core import session_factory
 from app.db.repo import StorageRepository
 from app.service import FileStorageService
 
-from app.schemas import CreateFolderSchema
+from app.schemas import CreateFolderSchema, MoveItemSchema
 
 app = FastAPI()
 
@@ -37,3 +37,11 @@ async def post_folder_route(
     data: CreateFolderSchema, service: FileStorageService = Depends(dep)
 ):
     return await service.create_folder(data.name, data.parent_id)
+
+
+@app.post("/move")
+async def post_move_route(
+    data: MoveItemSchema, service: FileStorageService = Depends(dep)
+):
+    await service.storage_repo.change_item_parent(data.id_, data.new_parent_id)
+    await service.storage_repo.commit()

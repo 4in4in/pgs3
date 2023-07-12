@@ -29,9 +29,16 @@ class CreateFolderSchema(BaseModel):
     name: str
     parent_id: UUID4 | None = None
 
+
+class MoveItemSchema(BaseModel):
+    id_: UUID4 = Field(..., alias="id")
+    new_parent_id: UUID4 | None = None
+
+
 class PathResponseItem(BaseModel):
     id_: UUID4 | None = Field(None, alias="id")
     path: str
+
 
 class Page(BaseModel):
     current_page: int

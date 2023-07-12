@@ -65,24 +65,25 @@ class FileStorageService:
         per_page: int = 50,
     ):
         limit, offset = self._page_to_limit_offset(page, per_page)
-        raw_items, total = await self.storage_repo.list_items(
-            folder_id, query, limit, offset
-        )
+
+        raw_items = await self.storage_repo.list_items(folder_id, query, limit, offset)
+        total = await self.storage_repo.list_items(folder_id, query, count_only=True)
+
         items = [
             FileStorageItemSchema(
                 title=item.name,
                 id=item.item_id,
                 type=item.type,
-                src=self.delimiter.join(item.path),
-                path=self.delimiter.join(item.path),
+                src=item.path or item.name,
+                path=item.path or item.name,
             )
             for item in raw_items
         ]
-        path = await self.storage_repo.get_item_by_id(folder_id)
-        if path:
-            path = [PathResponseItem(id=raw_path["item_id"], path=raw_path["name"]) for raw_path in path.path]
-        else:
-            path = [PathResponseItem(id=None, path=self.delimiter)]
+        path = [PathResponseItem(id=None, path=self.delimiter)]
+        if folder_id:
+            path_items = await self.storage_repo.get_item_path(folder_id)
+            path.extend([PathResponseItem(id=path_item.item_id, path=path_item.name) for path_item in path_items])
+
         return Page(
             current_page=page,
             items=items,
