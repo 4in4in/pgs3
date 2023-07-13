@@ -12,6 +12,7 @@ from app.schemas import (
     DeleteItemStatusCode,
     FileStorageItemSchema,
     Page,
+    PageWithHighlidtedItem,
     PathResponseItem,
 )
 
@@ -101,7 +102,7 @@ class FileStorageService:
                 title=item.name,
                 id=item.item_id,
                 type=item.type,
-                src=self.src_prefix + item.path or item.name,
+                src=self.src_prefix + item.path,
                 path=item.path or item.name,
                 bind_count=(bindings or {}).get(item.path, 0),
             )
@@ -134,8 +135,10 @@ class FileStorageService:
         except IntegrityError as ex:
             await self.storage_repo.rollback()
             raise FolderExists
-    
-    async def move_item(self, item_id: ItemId, new_parent_id: ItemId | None = None) -> Page:
+
+    async def move_item(
+        self, item_id: ItemId, new_parent_id: ItemId | None = None
+    ) -> Page:
         await self.storage_repo.change_item_parent(item_id, new_parent_id)
         await self.storage_repo.commit()
         return await self.list_folder_items(new_parent_id)
@@ -199,3 +202,28 @@ class FileStorageService:
         if not new_page.items and page > 1:
             new_page = await self.list_folder_items(item.parent_id, page=page - 1)
         return DeleteItemResponse(status_code=DeleteItemStatusCode.OK, datas=new_page)
+
+    async def get_page_by_path(self, path: str, per_page: int = 50) -> Page:
+        _items = await self.storage_repo.get_items_by_paths([path])
+        if not _items:
+            ...  # not found
+        item = _items[0]
+        parent_id = item.parent_id
+
+        page_number = await self.storage_repo.get_page_number(
+            parent_id, item.item_id, per_page
+        )
+        if not page_number:
+            ...  # something wrong
+        page = await self.list_folder_items(
+            parent_id, page=page_number, per_page=per_page
+        )
+        return PageWithHighlidtedItem(
+            current_page=page.current_page,
+            items=page.items,
+            path=page.path,
+            all_page=page.all_page,
+            total=page.total,
+            highlighted_item_id=item.item_id,
+        )
+

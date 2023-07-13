@@ -4,11 +4,8 @@ from uuid import UUID
 from sqlalchemy import select, delete, func, update
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
 
 from app.db.models.item import Item
-
-# from app.db.models.item_extended import ItemWithFullPath, ItemWithPath
 
 
 ItemId = UUID | str
@@ -110,6 +107,36 @@ class StorageRepository:
     async def get_items_by_paths(self, paths: list[str]) -> list[Item]:
         query = select(Item).where(Item.path.in_(paths))
         return (await self.session.execute(query)).scalars().all()
+
+    async def get_page_number(
+        self, parent_id: ItemId | None, item_id: ItemId, limit: int
+    ) -> int | None:
+        order_func = func.array_position(
+            array([ItemType.FOLDER.value, ItemType.FILE.value]), Item.type
+        )
+        page_expression = (
+            func.row_number().over(order_by=(order_func, Item.name)) - 1
+        ) / limit
+
+        cte = (
+            select(
+                Item.item_id,
+                Item.name,
+                (func.floor(page_expression)).label("page"),
+            )
+            .where(Item.parent_id == parent_id)
+            .order_by(order_func, Item.name)
+            .cte()
+        )
+
+        query = select(cte.c.page).where(cte.c.item_id == item_id)
+
+        page = (await self.session.execute(query)).scalar_one_or_none()
+        print(page)
+        if page is not None:
+            return int(page) + 1  # sql number format that starts from 1
+        else:
+            return None
 
     async def _remove_all(self) -> None:
         await self.session.execute(delete(Item))

@@ -2,7 +2,7 @@ import logging
 
 from pydantic import UUID4
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 from fastapi import FastAPI, Depends
 
@@ -12,7 +12,7 @@ from app.db.repositories.bindings import BindingsRepository
 from app.services.storage import FileStorageService
 from app.s3_connector.connector import S3Connector
 
-from app.schemas import CreateFolderSchema, DeleteItemResponse, MoveItemSchema, Page
+from app.schemas import CreateFolderSchema, DeleteItemResponse, MoveItemSchema, Page, PageWithHighlidtedItem
 
 from app.settings import get_settings
 
@@ -71,3 +71,8 @@ async def move_item_route(
 @app.delete("/delete", responses={200: {"model": DeleteItemResponse}})
 async def delete_item_route(item_id: UUID4, service: FileStorageService = Depends(dep)):
     return await service.remove_item(item_id)
+
+
+@app.get("/page-by-path", responses={200: {"model": PageWithHighlidtedItem}})
+async def get_page_by_path_route(path: str, service: FileStorageService = Depends(dep)):
+    return await service.get_page_by_path(path)

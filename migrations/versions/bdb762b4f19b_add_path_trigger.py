@@ -37,7 +37,9 @@ BEGIN
     FROM items_cte
     INTO pth
     WHERE items_cte.item_id = NEW.parent_id;
-    NEW.path = pth;
+
+    IF pth IS NULL THEN NEW.path = NEW.name; ELSE NEW.path = pth; END IF;
+
     RETURN NEW;
 END;
 $function$
