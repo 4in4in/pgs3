@@ -11,6 +11,7 @@ class S3Connector:
         aws_secret_access_key: str,
         endpoint_url: str,
         verify: bool = True,
+        debug: bool = False,
     ) -> None:
         self._session = aioboto3.Session(
             aws_access_key_id=aws_access_key_id,
@@ -23,6 +24,7 @@ class S3Connector:
         )
         self._client = None
         self._bucket_name = bucket_name
+        self.debug = debug
 
     async def __aenter__(self):
         self._client = await self._session.client(**self._client_params).__aenter__()
@@ -33,20 +35,35 @@ class S3Connector:
             await self._client.__aexit__(*args, **kwargs)
 
     async def create_bucket(self, bucket_name: str) -> None:
+        if self.debug:
+            print("CALLED", self.create_bucket.__name__, bucket_name)
+            return
         await self._client.create_bucket(Bucket=bucket_name)
 
     async def delete_bucket(self, bucket_name: str) -> None:
+        if self.debug:
+            print("CALLED", self.delete_bucket.__name__, bucket_name)
+            return
         await self._client.delete_bucket(Bucket=bucket_name)
 
     async def upload_file(self, key: str, raw_content: bytes) -> None:
+        if self.debug:
+            print("CALLED", self.upload_file.__name__, key, len(raw_content))
+            return
         file_like = BytesIO(raw_content)
         await self._client.upload_fileobj(file_like, self._bucket_name, key)
 
     async def remove_items(self, keys: list[str], batch_count=50) -> None:
+        if self.debug:
+            print("CALLED", self.remove_items.__name__, keys, batch_count)
+            return
+
         def divide_chunks(l, n):
             for i in range(0, len(l), n):
                 yield l[i : i + n]
 
         for keys_chunk in divide_chunks(keys, batch_count):
             delete_arg = {"Objects": [{"Key": key} for key in keys_chunk]}
-            await self._client.delete_objects(Bucket=self._bucket_name, Delete=delete_arg)
+            await self._client.delete_objects(
+                Bucket=self._bucket_name, Delete=delete_arg
+            )

@@ -10,7 +10,7 @@ from uuid import uuid4
 from asyncpg.exceptions import UniqueViolationError
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from app.db.repo import StorageRepository, ItemType
+from app.db.repositories.storage import StorageRepository, ItemType
 from app.db.core import session_factory
 
 logger = logging.getLogger(__name__)

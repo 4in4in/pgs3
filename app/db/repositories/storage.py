@@ -31,7 +31,7 @@ class StorageRepository:
         offset: int = 0,
         *,
         count_only: bool = False,
-    ) -> tuple[list[Item], int]:
+    ) -> list[Item] | int:
         if count_only:
             _query = select(func.count(Item.item_id))
             if parent_id or not search_query:
@@ -46,7 +46,13 @@ class StorageRepository:
             array([ItemType.FOLDER.value, ItemType.FILE.value]),
             Item.type,
         )
-        query = select(Item).order_by(order_func).order_by(Item.name).limit(limit).offset(offset)
+        query = (
+            select(Item)
+            .order_by(order_func)
+            .order_by(Item.name)
+            .limit(limit)
+            .offset(offset)
+        )
 
         if parent_id or not search_query:
             query = query.where(Item.parent_id == parent_id)
@@ -100,6 +106,10 @@ class StorageRepository:
     async def is_item_exists(self, item_id: ItemId) -> bool:
         query = select(func.count(Item.item_id)).where(Item.item_id == item_id)
         return bool((await self.session.execute(query)).scalar())
+
+    async def get_items_by_paths(self, paths: list[str]) -> list[Item]:
+        query = select(Item).where(Item.path.in_(paths))
+        return (await self.session.execute(query)).scalars().all()
 
     async def _remove_all(self) -> None:
         await self.session.execute(delete(Item))

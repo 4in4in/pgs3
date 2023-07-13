@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import UUID4, BaseModel, Field, validator
 
-from app.db.repo import ItemType
+from app.db.repositories.storage import ItemType
 
 
 class ItemTypeHR(str, Enum):
@@ -47,3 +47,13 @@ class Page(BaseModel):
     path: list[PathResponseItem]
     all_page: int
     total: int
+
+
+class DeleteItemStatusCode(int, Enum):
+    OK = 0
+    ERROR = 1
+
+
+class DeleteItemResponse(BaseModel):
+    status_code: int
+    datas: list[PathResponseItem] | Page
