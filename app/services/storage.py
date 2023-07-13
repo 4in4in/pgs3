@@ -176,7 +176,7 @@ class FileStorageService:
             bindings, _ = await self.binding_repo.get_file_binds([item.path])
         elif item.type == ItemType.FOLDER:
             total_files = await self.storage_repo.list_items(item_id, count_only=True)
-            to_delete.append(
+            to_delete.extend(
                 await self.storage_repo.list_items(item_id, limit=total_files)
             )
             bindings, _ = await self.binding_repo.get_file_binds(
@@ -197,11 +197,12 @@ class FileStorageService:
         else:
             await self.s3_helper.remove_items(to_delete)
             await self.storage_repo.remove_item(item_id)
+            await self.storage_repo.commit()
 
         new_page = await self.list_folder_items(item.parent_id, page=page)
         if not new_page.items and page > 1:
             new_page = await self.list_folder_items(item.parent_id, page=page - 1)
-        return DeleteItemResponse(status_code=DeleteItemStatusCode.OK, datas=new_page)
+        return DeleteItemResponse(statusCode=DeleteItemStatusCode.OK, datas=new_page)
 
     async def get_page_by_path(self, path: str, per_page: int = 50) -> Page:
         _items = await self.storage_repo.get_items_by_paths([path])
@@ -226,4 +227,3 @@ class FileStorageService:
             total=page.total,
             highlighted_item_id=item.item_id,
         )
-

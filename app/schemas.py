@@ -55,7 +55,7 @@ class DeleteItemStatusCode(int, Enum):
 
 
 class DeleteItemResponse(BaseModel):
-    status_code: int
+    statusCode: int
     datas: list[PathResponseItem] | Page
 
 class PageWithHighlidtedItem(Page):
