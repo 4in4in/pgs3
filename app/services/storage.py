@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.repositories.bindings import BindingsRepositoryProtocol
 from app.db.repositories.storage import ItemType, ItemId, StorageRepository
-from app.s3_connector.connector import S3Connector
+from app.s3.connector import S3Connector
 
 from app.schemas import (
     DeleteItemResponse,
@@ -30,13 +30,13 @@ class FileStorageService:
     def __init__(
         self,
         storage_repo: StorageRepository,
-        s3_helper: S3Connector | None = None,
+        s3_connector: S3Connector | None = None,
         binding_repo: BindingsRepositoryProtocol | None = None,
         unique_id_factory=uuid4,
         delimiter: str = "/",
         src_prefix: str = "",
     ) -> None:
-        self.s3_helper = s3_helper
+        self.s3_connector = s3_connector
         self.storage_repo = storage_repo
         self.unique_id_factory = unique_id_factory
         self.binding_repo = binding_repo
@@ -72,10 +72,9 @@ class FileStorageService:
             await self.storage_repo.create_item(
                 file_id, filename, ItemType.FILE, parent_id=folder_id
             )
-            if self.s3_helper:
-                await self.s3_helper.upload_file(
-                    key=str(file_id), raw_content=raw_content
-                )
+            await self.s3_connector.upload_file(
+                key=str(file_id), raw_content=raw_content
+            )
             await self.storage_repo.commit()
         except IntegrityError as ex:
             raise FileExists
@@ -147,30 +146,6 @@ class FileStorageService:
 
         return await self.list_folder_items(new_parent_id, page=page, per_page=per_page)
 
-    async def remove_file(self, file_id: ItemId) -> None:
-        try:
-            await self.storage_repo.remove_item(file_id)
-            if self.s3_helper:
-                await self.s3_helper.remove_items([file_id])
-        except Exception as ex:
-            raise ex
-
-    async def remove_folder(self, folder_id: ItemId) -> None:
-        try:
-            if self.s3_helper:
-                total_files = await self.storage_repo.list_items(
-                    folder_id, count_only=True
-                )
-                if total_files:
-                    files = await self.storage_repo.list_items(
-                        folder_id, limit=total_files
-                    )
-                    await self.s3_helper.remove_items([file.item_id for file in files])
-
-            await self.storage_repo.remove_item(folder_id)
-        except Exception as ex:
-            raise ex
-
     async def remove_item(
         self, item_id: ItemId, per_page: int = 50
     ) -> DeleteItemResponse:
@@ -205,7 +180,7 @@ class FileStorageService:
                 ],
             )
         else:
-            await self.s3_helper.remove_items(to_delete)
+            await self.s3_connector.remove_items(to_delete)
             await self.storage_repo.remove_item(item_id)
             await self.storage_repo.commit()
 

@@ -8,7 +8,7 @@ from app.db.core import session_factory
 from app.db.repositories.storage import StorageRepository
 from app.db.repositories.bindings import BindingsRepositoryMock
 from app.services.storage import FileStorageService
-from app.s3_connector.connector import S3Connector
+from app.s3.connector import S3Connector
 
 from app.schemas import DeleteItemResponse, Page, PageWithHighlidtedItem
 
@@ -32,7 +32,7 @@ async def fs_service():
         )
         service = FileStorageService(
             storage_repo=repo,
-            s3_helper=s3_connector,
+            s3_connector=s3_connector,
             src_prefix=settings.SRC_PREFIX,
             binding_repo=BindingsRepositoryMock(),
         )
