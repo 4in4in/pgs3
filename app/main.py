@@ -2,7 +2,7 @@ import logging
 
 from pydantic import UUID4
 
-from fastapi import FastAPI, Depends, Query, Path
+from fastapi import FastAPI, Depends, Query, Path, UploadFile
 
 from app.db.core import session_factory
 from app.db.repositories.storage import StorageRepository
@@ -19,6 +19,7 @@ app = FastAPI()
 settings = get_settings()
 
 logging.basicConfig(level=settings.DEBUG and logging.DEBUG or logging.INFO)
+
 
 async def fs_service():
     async with session_factory() as session:
@@ -94,3 +95,22 @@ async def get_page_by_path_route(
     service: FileStorageService = Depends(fs_service),
 ):
     return await service.get_page_by_path(path, per_page)
+
+
+@app.put("/webdav/{file_path}")
+async def put_webdav_file_route(
+    file_path: str,
+    file: UploadFile,
+    service: FileStorageService = Depends(fs_service),
+):
+    if "/" in file_path:
+        folder, filename = file_path.rsplit("/", maxsplit=1)
+        folder_id = await service.storage_repo.get_item_id_by_path(folder)
+    else:
+        filename = file_path
+        folder_id = None
+
+    await service.upload_file(
+        filename=filename, raw_content=await file.read(), folder_id=folder_id
+    )
+
