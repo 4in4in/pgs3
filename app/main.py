@@ -10,7 +10,7 @@ from app.db.repositories.bindings import BindingsRepositoryMock
 from app.services.storage import FileStorageService
 from app.s3.connector import S3Connector
 
-from app.schemas import DeleteItemResponse, Page, PageWithHighlidtedItem
+from app.schemas import DeleteItemResponseSchema, PageSchema, PageWithHighlidtedItemSchema
 
 from app.settings import get_settings
 
@@ -40,8 +40,8 @@ async def fs_service():
             yield service
 
 
-@app.get("/find_file", responses={200: {"model": list[Page]}})
-@app.get("/filesV4", responses={200: {"model": list[Page]}})
+@app.get("/find_file", responses={200: {"model": list[PageSchema]}})
+@app.get("/filesV4", responses={200: {"model": list[PageSchema]}})
 async def get_files_route(
     folder_id: UUID4 | None = Query(None, alias="id"),
     page: int = 1,
@@ -57,7 +57,7 @@ async def get_files_route(
     )
 
 
-@app.post("/create_dirV2", responses={200: {"model": Page}})
+@app.post("/create_dirV2", responses={200: {"model": PageSchema}})
 async def create_folder_route(
     name: str,
     folder_id: UUID4 = Query(None, alias="id"),
@@ -66,7 +66,7 @@ async def create_folder_route(
     return await service.create_folder(name, folder_id)
 
 
-@app.post("/movement", responses={200: {"model": Page}})
+@app.post("/movement", responses={200: {"model": PageSchema}})
 async def move_item_route(
     item_id: UUID4 = Query(..., description="Not filename anymore"),
     target_folder_id: UUID4 = Query(None, alias="new_id"),
@@ -77,8 +77,8 @@ async def move_item_route(
     return await service.move_item(item_id, target_folder_id, per_page)
 
 
-@app.delete("/files/file/{id}/delete", responses={200: {"model": DeleteItemResponse}})
-@app.delete("/files/folder/{id}/delete", responses={200: {"model": DeleteItemResponse}})
+@app.delete("/files/file/{id}/delete", responses={200: {"model": DeleteItemResponseSchema}})
+@app.delete("/files/folder/{id}/delete", responses={200: {"model": DeleteItemResponseSchema}})
 async def delete_item_route(
     item_id: UUID4 = Path(..., alias="id"),
     per_page: int = settings.PER_PAGE,
@@ -88,7 +88,7 @@ async def delete_item_route(
     return await service.remove_item(item_id, per_page)
 
 
-@app.get("/page-by-path", responses={200: {"model": PageWithHighlidtedItem}})
+@app.get("/page-by-path", responses={200: {"model": PageWithHighlidtedItemSchema}})
 async def get_page_by_path_route(
     path: str,
     per_page: int = settings.PER_PAGE,

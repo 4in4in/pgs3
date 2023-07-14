@@ -36,15 +36,15 @@ class MoveItemSchema(BaseModel):
     new_parent_id: UUID4 | None = None
 
 
-class PathResponseItem(BaseModel):
+class PathResponseItemSchema(BaseModel):
     id_: UUID4 | None = Field(None, alias="id")
     path: str
 
 
-class Page(BaseModel):
+class PageSchema(BaseModel):
     current_page: int
     items: list[FileStorageItemSchema]
-    path: list[PathResponseItem]
+    path: list[PathResponseItemSchema]
     all_page: int
     total: int
 
@@ -54,9 +54,9 @@ class DeleteItemStatusCode(int, Enum):
     ERROR = 1
 
 
-class DeleteItemResponse(BaseModel):
+class DeleteItemResponseSchema(BaseModel):
     statusCode: DeleteItemStatusCode
-    datas: list[PathResponseItem] | Page
+    datas: list[PathResponseItemSchema] | PageSchema
 
-class PageWithHighlidtedItem(Page):
+class PageWithHighlidtedItemSchema(PageSchema):
     highlighted_item_id: UUID4

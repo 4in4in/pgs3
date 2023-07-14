@@ -109,7 +109,10 @@ class StorageRepository:
         return (await self.session.execute(query)).scalars().all()
 
     async def get_page_number(
-        self, parent_id: ItemId | None, item_id: ItemId, limit: int
+        self,
+        parent_id: ItemId | None,
+        item_id: ItemId,
+        limit: int,
     ) -> int | None:
         order_func = func.array_position(
             array([ItemType.FOLDER.value, ItemType.FILE.value]), Item.type

@@ -9,12 +9,12 @@ from app.db.repositories.storage import ItemType, ItemId, StorageRepository
 from app.s3.connector import S3Connector
 
 from app.schemas import (
-    DeleteItemResponse,
+    DeleteItemResponseSchema,
     DeleteItemStatusCode,
     FileStorageItemSchema,
-    Page,
-    PageWithHighlidtedItem,
-    PathResponseItem,
+    PageSchema,
+    PageWithHighlidtedItemSchema,
+    PathResponseItemSchema,
 )
 
 LimitOffset = namedtuple("LimitOffset", ("limit", "offset"))
@@ -50,13 +50,13 @@ class FileStorageService:
 
     async def _construct_page_path(
         self, folder_id: ItemId | None = None
-    ) -> list[PathResponseItem]:
-        path = [PathResponseItem(id=None, path=self.delimiter)]
+    ) -> list[PathResponseItemSchema]:
+        path = [PathResponseItemSchema(id=None, path=self.delimiter)]
         if folder_id:
             path_items = await self.storage_repo.get_item_path(folder_id)
             path.extend(
                 [
-                    PathResponseItem(id=path_item.item_id, path=path_item.name)
+                    PathResponseItemSchema(id=path_item.item_id, path=path_item.name)
                     for path_item in path_items
                 ]
             )
@@ -104,7 +104,7 @@ class FileStorageService:
         query: str | None = None,
         page: int = 1,
         per_page: int = 50,
-    ):
+    ) -> PageSchema:
         limit, offset = self._page_to_limit_offset(page, per_page)
 
         raw_items = await self.storage_repo.list_items(folder_id, query, limit, offset)
@@ -123,7 +123,7 @@ class FileStorageService:
             for item in raw_items
         ]
 
-        return Page(
+        return PageSchema(
             current_page=page,
             items=items,
             path=await self._construct_page_path(folder_id),
@@ -131,7 +131,9 @@ class FileStorageService:
             total=total,
         )
 
-    async def create_folder(self, name: str, parent_id: ItemId | None = None):
+    async def create_folder(
+        self, name: str, parent_id: ItemId | None = None
+    ) -> PageSchema:
         folder_id = self.unique_id_factory()
         try:
             self.storage_repo.create_item(
@@ -139,7 +141,7 @@ class FileStorageService:
             )
             await self.storage_repo.commit()
 
-            return Page(
+            return PageSchema(
                 current_page=1,
                 items=[],
                 path=await self._construct_page_path(folder_id),
@@ -155,7 +157,7 @@ class FileStorageService:
         item_id: ItemId,
         new_parent_id: ItemId | None = None,
         per_page: int = 50,
-    ) -> Page:
+    ) -> PageSchema:
         await self.storage_repo.change_item_parent(item_id, new_parent_id)
         await self.storage_repo.commit()
         page = await self.storage_repo.get_page_number(new_parent_id, item_id, per_page)
@@ -164,7 +166,7 @@ class FileStorageService:
 
     async def remove_item(
         self, item_id: ItemId, per_page: int = 50
-    ) -> DeleteItemResponse:
+    ) -> DeleteItemResponseSchema:
         item = await self.storage_repo.get_item_by_id(item_id)
         page = await self.storage_repo.get_page_number(
             item.parent_id, item_id, per_page
@@ -188,10 +190,10 @@ class FileStorageService:
             binded_items = await self.storage_repo.get_items_by_paths(
                 [path for path in bindings]
             )
-            return DeleteItemResponse(
+            return DeleteItemResponseSchema(
                 statusCode=DeleteItemStatusCode.ERROR,
                 datas=[
-                    PathResponseItem(id=_item.item_id, path=_item.path)
+                    PathResponseItemSchema(id=_item.item_id, path=_item.path)
                     for _item in binded_items
                 ],
             )
@@ -203,9 +205,11 @@ class FileStorageService:
         new_page = await self.list_folder_items(item.parent_id, page=page)
         if not new_page.items and page > 1:
             new_page = await self.list_folder_items(item.parent_id, page=page - 1)
-        return DeleteItemResponse(statusCode=DeleteItemStatusCode.OK, datas=new_page)
+        return DeleteItemResponseSchema(
+            statusCode=DeleteItemStatusCode.OK, datas=new_page
+        )
 
-    async def get_page_by_path(self, path: str, per_page: int = 50) -> Page:
+    async def get_page_by_path(self, path: str, per_page: int = 50) -> PageSchema:
         _items = await self.storage_repo.get_items_by_paths([path])
         if not _items:
             ...  # not found
@@ -220,7 +224,7 @@ class FileStorageService:
         page = await self.list_folder_items(
             parent_id, page=page_number, per_page=per_page
         )
-        return PageWithHighlidtedItem(
+        return PageWithHighlidtedItemSchema(
             current_page=page.current_page,
             items=page.items,
             path=page.path,
