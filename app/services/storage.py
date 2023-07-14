@@ -69,7 +69,7 @@ class FileStorageService:
     ):
         file_id = self.unique_id_factory()
         try:
-            await self.storage_repo.create_item(
+            self.storage_repo.create_item(
                 file_id, filename, ItemType.FILE, parent_id=folder_id
             )
             await self.s3_connector.upload_file(
