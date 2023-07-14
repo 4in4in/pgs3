@@ -1,12 +1,11 @@
 from uuid import uuid4
 from collections import namedtuple
-
-
 from sqlalchemy.exc import IntegrityError
-from app.db.repositories.bindings import BindingsRepositoryProtocol
 
+from app.db.repositories.bindings import BindingsRepositoryProtocol
 from app.db.repositories.storage import ItemType, ItemId, StorageRepository
 from app.s3_connector.connector import S3Connector
+
 from app.schemas import (
     DeleteItemResponse,
     DeleteItemStatusCode,
@@ -137,11 +136,16 @@ class FileStorageService:
             raise FolderExists
 
     async def move_item(
-        self, item_id: ItemId, new_parent_id: ItemId | None = None
+        self,
+        item_id: ItemId,
+        new_parent_id: ItemId | None = None,
+        per_page: int = 50,
     ) -> Page:
         await self.storage_repo.change_item_parent(item_id, new_parent_id)
         await self.storage_repo.commit()
-        return await self.list_folder_items(new_parent_id)
+        page = await self.storage_repo.get_page_number(new_parent_id, item_id, per_page)
+
+        return await self.list_folder_items(new_parent_id, page=page, per_page=per_page)
 
     async def remove_file(self, file_id: ItemId) -> None:
         try:
@@ -167,8 +171,14 @@ class FileStorageService:
         except Exception as ex:
             raise ex
 
-    async def remove_item(self, item_id: ItemId, page: int = 1) -> DeleteItemResponse:
+    async def remove_item(
+        self, item_id: ItemId, per_page: int = 50
+    ) -> DeleteItemResponse:
         item = await self.storage_repo.get_item_by_id(item_id)
+        page = await self.storage_repo.get_page_number(
+            item.parent_id, item_id, per_page
+        )
+
         bindings = {}
         to_delete = [item]
 

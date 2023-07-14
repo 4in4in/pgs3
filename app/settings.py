@@ -18,6 +18,9 @@ class Settings(BaseSettings):
 
     SRC_PREFIX: str = "/fm2/a/"
 
+    PER_PAGE: int = 50
+    DEBUG: bool = False
+
     @property
     def POSTGRES_CONN_STRING(self):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

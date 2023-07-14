@@ -1,6 +1,6 @@
 
-init-local:
-	POSTGRES_HOST=localhost
+activate:
+	. .venv/bin/activate
 
 up:
 	docker-compose --env-file .env up -d
