@@ -23,21 +23,21 @@ logging.basicConfig(level=settings.DEBUG and logging.DEBUG or logging.INFO)
 
 async def fs_service():
     async with session_factory() as session:
-        repo = StorageRepository(session)
-        s3_connector = S3Connector(
+        async with S3Connector(
             bucket_name=settings.S3_BUCKET_NAME,
             aws_access_key_id=settings.S3_ACCESS_KEY,
             aws_secret_access_key=settings.S3_SECRET_KEY,
             endpoint_url=settings.S3_ENDPOINT,
             debug=settings.DEBUG,
-        )
-        service = FileStorageService(
-            storage_repo=repo,
-            s3_connector=s3_connector,
-            src_prefix=settings.SRC_PREFIX,
-            binding_repo=BindingsRepositoryMock(),
-        )
-        yield service
+        ) as s3_connector:
+            repo = StorageRepository(session)
+            service = FileStorageService(
+                storage_repo=repo,
+                s3_connector=s3_connector,
+                src_prefix=settings.SRC_PREFIX,
+                binding_repo=BindingsRepositoryMock(),
+            )
+            yield service
 
 
 @app.get("/find_file", responses={200: {"model": list[Page]}})
