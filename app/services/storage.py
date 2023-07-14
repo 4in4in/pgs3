@@ -1,5 +1,7 @@
 from uuid import uuid4
 from collections import namedtuple
+
+from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from app.db.repositories.bindings import BindingsRepositoryProtocol
@@ -60,19 +62,30 @@ class FileStorageService:
             )
         return path
 
-    async def upload_file(
-        self,
-        filename: str,
-        raw_content: bytes,
-        *,
-        folder_id: ItemId | None = None,
-    ):
+    async def upload_file(self, raw_content: bytes, file_path: str) -> None:
+        _file_path = file_path
+        if not self.delimiter in _file_path:
+            _file_path = self.delimiter + _file_path
+
+        folder_path, file_name = _file_path.rsplit(self.delimiter, maxsplit=1)
+
+        folder_id = None
+        if folder_path:
+            folder_id = await self.storage_repo.get_item_id_by_path(folder_path)
+            if not folder_id:
+                raise HTTPException(409, "Folder not found")
+
+        existing_item_id = await self.storage_repo.get_item_id_by_path(file_path)
+        if existing_item_id:
+            answer = await self.remove_item(existing_item_id)
+            if answer.statusCode == DeleteItemStatusCode.ERROR:
+                return answer
         file_id = self.unique_id_factory()
 
         try:
             self.storage_repo.create_item(
                 file_id,
-                filename,
+                file_name,
                 ItemType.FILE,
                 parent_id=folder_id,
             )
@@ -81,8 +94,6 @@ class FileStorageService:
                 raw_content=raw_content,
             )
             await self.storage_repo.commit()
-        except IntegrityError as ex:
-            raise FileExists
         except Exception as ex:
             await self.storage_repo.rollback()
             raise ex

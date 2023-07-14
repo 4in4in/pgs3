@@ -108,23 +108,4 @@ async def put_webdav_file_route(
     file: UploadFile,
     service: FileStorageService = Depends(fs_service),
 ):
-    if not "/" in file_path:
-        file_path = "/" + file_path
-    folder, filename = file_path.rsplit("/", maxsplit=1)
-    if folder == "":
-        folder_id = None
-    else:
-        folder_id = await service.storage_repo.get_item_id_by_path(folder)
-        if not folder_id:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="folder not found",
-            )
-    if existing_item_id := await service.storage_repo.get_item_id_by_path(file_path):
-        answer = await service.remove_item(existing_item_id)
-        if answer.statusCode == DeleteItemStatusCode.ERROR:
-            return answer
-
-    await service.upload_file(
-        filename=filename, raw_content=await file.read(), folder_id=folder_id
-    )
+    return await service.upload_file(await file.read(), file_path)
