@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends, Query, Path
 
 from app.db.core import session_factory
 from app.db.repositories.storage import StorageRepository
-from app.db.repositories.bindings import BindingsRepository
+from app.db.repositories.bindings import BindingsRepositoryMock
 from app.services.storage import FileStorageService
 from app.s3_connector.connector import S3Connector
 
@@ -34,7 +34,7 @@ async def fs_service():
             storage_repo=repo,
             s3_helper=s3_connector,
             src_prefix=settings.SRC_PREFIX,
-            binding_repo=BindingsRepository(),
+            binding_repo=BindingsRepositoryMock(),
         )
         yield service
 
