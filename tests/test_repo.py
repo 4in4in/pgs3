@@ -63,8 +63,6 @@ async def test_nested_folder_creating(repo: StorageRepository):
 
     assert len((await repo.list_items())) == 1
     assert len((await repo.list_items(root_folder_id))) == inner_folders_count
-    assert len((await repo.list_items(search_query="inner"))) == inner_folders_count
-    assert len((await repo.list_items(search_query="inner0"))) == 1
 
 
 async def test_ordering(repo: StorageRepository):

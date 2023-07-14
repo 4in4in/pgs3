@@ -114,16 +114,12 @@ class StorageRepository:
         order_func = func.array_position(
             array([ItemType.FOLDER.value, ItemType.FILE.value]), Item.type
         )
-        page_expression = (
-            func.row_number().over(order_by=(order_func, Item.name)) - 1
-        ) / limit
+        row_num_from_zero = func.row_number().over(order_by=(order_func, Item.name)) - 1
+
+        page_expression = func.floor(row_num_from_zero / limit).label("page")
 
         cte = (
-            select(
-                Item.item_id,
-                Item.name,
-                (func.floor(page_expression)).label("page"),
-            )
+            select(Item.item_id, Item.name, page_expression)
             .where(Item.parent_id == parent_id)
             .order_by(order_func, Item.name)
             .cte()
