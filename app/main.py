@@ -2,7 +2,7 @@ import logging
 
 from pydantic import UUID4
 
-from fastapi import FastAPI, Depends, Query, Path, UploadFile
+from fastapi import FastAPI, Depends, Query, Path, UploadFile, HTTPException, status
 
 from app.db.core import session_factory
 from app.db.repositories.storage import StorageRepository
@@ -10,7 +10,12 @@ from app.db.repositories.bindings import BindingsRepositoryMock
 from app.services.storage import FileStorageService
 from app.s3.connector import S3Connector
 
-from app.schemas import DeleteItemResponse, Page, PageWithHighlidtedItem
+from app.schemas import (
+    DeleteItemResponse,
+    DeleteItemStatusCode,
+    Page,
+    PageWithHighlidtedItem,
+)
 
 from app.settings import get_settings
 
@@ -103,14 +108,23 @@ async def put_webdav_file_route(
     file: UploadFile,
     service: FileStorageService = Depends(fs_service),
 ):
-    if "/" in file_path:
-        folder, filename = file_path.rsplit("/", maxsplit=1)
-        folder_id = await service.storage_repo.get_item_id_by_path(folder)
-    else:
-        filename = file_path
+    if not "/" in file_path:
+        file_path = "/" + file_path
+    folder, filename = file_path.rsplit("/", maxsplit=1)
+    if folder == "":
         folder_id = None
+    else:
+        folder_id = await service.storage_repo.get_item_id_by_path(folder)
+        if not folder_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="folder not found",
+            )
+    if existing_item_id := await service.storage_repo.get_item_id_by_path(file_path):
+        answer = await service.remove_item(existing_item_id)
+        if answer.statusCode == DeleteItemStatusCode.ERROR:
+            return answer
 
     await service.upload_file(
         filename=filename, raw_content=await file.read(), folder_id=folder_id
     )
-

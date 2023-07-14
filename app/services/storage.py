@@ -68,12 +68,17 @@ class FileStorageService:
         folder_id: ItemId | None = None,
     ):
         file_id = self.unique_id_factory()
+
         try:
             self.storage_repo.create_item(
-                file_id, filename, ItemType.FILE, parent_id=folder_id
+                file_id,
+                filename,
+                ItemType.FILE,
+                parent_id=folder_id,
             )
             await self.s3_connector.upload_file(
-                key=str(file_id), raw_content=raw_content
+                key=str(file_id),
+                raw_content=raw_content,
             )
             await self.storage_repo.commit()
         except IntegrityError as ex:
