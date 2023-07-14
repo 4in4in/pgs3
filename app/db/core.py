@@ -13,7 +13,7 @@ from app.settings import get_settings
 settings = get_settings()
 
 Base = declarative_base()
-print(settings.POSTGRES_CONN_STRING)
+
 engine = create_async_engine(url=settings.POSTGRES_CONN_STRING)
 
 

@@ -2,7 +2,7 @@ import logging
 
 from pydantic import UUID4
 
-from fastapi import FastAPI, Depends, Query, Path, UploadFile, HTTPException, status
+from fastapi import FastAPI, Depends, Query, Path, UploadFile
 
 from app.db.core import session_factory
 from app.db.repositories.storage import StorageRepository
@@ -10,12 +10,7 @@ from app.db.repositories.bindings import BindingsRepositoryMock
 from app.services.storage import FileStorageService
 from app.s3.connector import S3Connector
 
-from app.schemas import (
-    DeleteItemResponse,
-    DeleteItemStatusCode,
-    Page,
-    PageWithHighlidtedItem,
-)
+from app.schemas import DeleteItemResponse, Page, PageWithHighlidtedItem
 
 from app.settings import get_settings
 
@@ -34,7 +29,7 @@ async def fs_service():
             aws_access_key_id=settings.S3_ACCESS_KEY,
             aws_secret_access_key=settings.S3_SECRET_KEY,
             endpoint_url=settings.S3_ENDPOINT,
-            debug=True,
+            debug=settings.DEBUG,
         )
         service = FileStorageService(
             storage_repo=repo,

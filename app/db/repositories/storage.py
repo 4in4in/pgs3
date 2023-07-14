@@ -128,7 +128,7 @@ class StorageRepository:
         query = select(cte.c.page).where(cte.c.item_id == item_id)
 
         page = (await self.session.execute(query)).scalar_one_or_none()
-        print(page)
+
         if page is not None:
             return int(page) + 1  # sql number format that starts from 1
         else:
