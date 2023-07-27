@@ -1,17 +1,9 @@
-import json
-
-from sqlalchemy import Column, UUID, String, ForeignKey, Index, func, select
-from sqlalchemy.orm import aliased, column_property, relationship, Mapped
-from sqlalchemy.dialects.postgresql import array
+from sqlalchemy import Column, UUID, String, ForeignKey, Index, func
 
 
 from app.db.core import Base
 
 ZERO_UUID = "00000000-0000-0000-0000-000000000000"
-
-
-def repr_func(data):
-    return json.dumps(data, ensure_ascii=False, indent=2, default=str)
 
 
 class Item(Base):
