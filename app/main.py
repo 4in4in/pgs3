@@ -97,10 +97,15 @@ async def get_page_by_path_route(
     return await service.get_page_by_path(path, per_page)
 
 
-@app.put("/webdav/{file_path}", tags=["webdav"])
+@app.put("/file/{file_path}", tags=["webdav"])
 async def put_webdav_file_route(
     file_path: str,
     file: UploadFile,
     service: FileStorageService = Depends(fs_service),
 ):
     return await service.upload_file(await file.read(), file_path)
+
+
+@app.get("/file/{file_path}", tags=["webdav"])
+async def get_webdav_file_route(file_path: str, service: FileStorageService = Depends(fs_service)):
+    return await service.get_file_by_path(file_path)

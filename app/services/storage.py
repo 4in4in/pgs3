@@ -2,6 +2,7 @@ from uuid import uuid4
 from collections import namedtuple
 
 from fastapi import HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
 from app.db.repositories.bindings import BindingsRepositoryProtocol
@@ -232,3 +233,8 @@ class FileStorageService:
             total=page.total,
             highlighted_item_id=item.item_id,
         )
+
+    async def get_file_by_path(self, file_path: str) -> StreamingResponse:
+        file_id = await self.storage_repo.get_item_id_by_path(file_path)
+        content = await self.s3_connector.download_file(file_id)
+        return StreamingResponse(content)

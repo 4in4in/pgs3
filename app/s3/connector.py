@@ -53,6 +53,13 @@ class S3Connector:
         file_like = BytesIO(raw_content)
         await self._client.upload_fileobj(file_like, self._bucket_name, key)
 
+    async def download_file(self, key: str):
+        if self.debug:
+            print("CALLED", self.download_file.__name__, key)
+            return
+        response = await self._client.get_object(Bucket=self._bucket_name, Key=key)
+        return response["Body"]
+
     async def remove_items(self, keys: list[str], batch_count=50) -> None:
         if self.debug:
             print("CALLED", self.remove_items.__name__, keys, batch_count)
